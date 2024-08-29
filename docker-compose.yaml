@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # Redis Service
+  redis:
+    container_name: redis-compose
+    image: redis
+    restart: always
+    environment:
+      - REDIS_PASSWORD=admin
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+    ports:
+      - '6379:6379'
+
+  # PostgreSQL Service
+  db:
+    container_name: postgres-compose
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres:/var/lib/postgresql/data
+  
+  pgadmin:
+    container_name: pgadmin-compose
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=hoadc.1205@gmail.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - '5050:80'
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+
+  # Zookeeper Service
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+
+  # Kafka Service
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 29092:29092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8085:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: 'true'
+
+  # Go Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile # Ensure this is the correct Dockerfile for your Go app
+    depends_on:
+      - db
+      - redis
+      - kafka
+    ports:
+      - '8080:8080' # Adjust if your application uses a different port
+    environment:
+      - DATABASE_URL=postgres://postgres:admin@db:5432/postgres?sslmode=disable
+      - REDIS_URL=redis://:admin@redis:6379
+      - KAFKA_BROKER=kafka:9092
+    command: ["go", "run", "main.go"]
+
+volumes:
+  postgres:
+    external: true
+  pgadmin:
+    external: true
