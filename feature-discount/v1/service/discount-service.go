@@ -321,6 +321,8 @@ func (d *DiscountService) DetailDiscount(id string) (res model.DiscountResponse,
 		}
 	}
 
+	d.RedisInfra.Client.Set(promotionString, promotion, utils.DefaultRedisTimeOut)
+
 	promotion.Products = products
 	res.CorePromotion = promotion
 	return res, http.StatusOK, nil
@@ -615,6 +617,8 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 
 		promotions[i].Products = products
 	}
+
+	d.RedisInfra.Client.Set(promotionString, promotions, utils.DefaultRedisTimeOut)
 
 	return promotions, http.StatusOK, nil
 }

@@ -13,7 +13,8 @@ const (
 )
 
 const (
-	DefaultContextTimeOut = time.Hour * 5
+	DefaultContextTimeOut = time.Second * 10
+	DefaultRedisTimeOut   = time.Second * 10
 )
 
 const (
