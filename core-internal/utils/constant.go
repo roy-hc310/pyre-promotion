@@ -13,7 +13,7 @@ const (
 )
 
 const (
-	DefaultContextTimeOut = time.Second * 10
+	DefaultContextTimeOut = time.Second * 100000000
 	DefaultRedisTimeOut   = time.Second * 10
 )
 
@@ -22,9 +22,9 @@ const (
 )
 
 const (
-	PromotionTableName = "promotions"
-	ProductTableName   = "products"
-	VariantTableName   = "product_variants"
+	PromotionTableName = "promotion.promotions"
+	ProductTableName   = "promotion.products"
+	VariantTableName   = "promotion.product_variants"
 )
 
 const (

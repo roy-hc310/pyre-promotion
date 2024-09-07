@@ -504,6 +504,10 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 		})
 	}
 
+	if len(promotionsId) == 0 {
+		return promotions, http.StatusOK, nil
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	errChan := make(chan error)
@@ -511,8 +515,7 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 	mapPromotionIdProducts := make(map[string]core_model.CoreProduct)
 	mapProductIdVariants := make(map[string][]core_model.CoreProductVariant)
 
-	
-	go func() {
+	go func(promotionsId []string) {
 		defer wg.Done()
 
 		productString := utils.PrepareSelectQuery(utils.ProductTableName, utils.ProductColumnsListForSelect)
@@ -522,6 +525,7 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 		if err != nil {
 			errChan <- err
 			return
+			// return res, http.StatusInternalServerError, err
 		}
 		defer productRows.Close()
 
@@ -538,6 +542,7 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 			if err != nil {
 				errChan <- err
 				return
+				// return res, http.StatusInternalServerError, err
 			}
 
 			key := rawProduct.PromotionID + "_" + rawProduct.UUID
@@ -546,9 +551,9 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 			}
 
 		}
-	}()
+	}(promotionsId)
 
-	go func() {
+	go func(promotionsId []string) {
 		defer wg.Done()
 
 		variantString := utils.PrepareSelectQuery(utils.VariantTableName, utils.VariantColumnsListForSelect)
@@ -559,6 +564,7 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 		if err != nil {
 			errChan <- err
 			return
+			// return res, http.StatusInternalServerError, err
 		}
 		defer variantRows.Close()
 
@@ -586,12 +592,12 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 
 			mapProductIdVariants[rawProductVariant.ProductID] = append(mapProductIdVariants[rawProductVariant.ProductID], rawProductVariant)
 		}
-	}()
+	}(promotionsId)
 
-	// go func() {
+	go func() {
 		wg.Wait()
 		close(errChan)
-	// }()
+	}()
 
 	for err := range errChan {
 		if err != nil {

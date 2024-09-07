@@ -3,6 +3,9 @@ package core
 import (
 	"pyre-promotion/core-internal/conf"
 	"pyre-promotion/core-internal/infrastructure"
+	health_v1_controller "pyre-promotion/feature-health/v1/controller"
+	health_v1_service "pyre-promotion/feature-health/v1/service"
+
 	discount_v1_controller "pyre-promotion/feature-discount/v1/controller"
 	discount_v1_service "pyre-promotion/feature-discount/v1/service"
 
@@ -13,6 +16,9 @@ import (
 )
 
 type Application struct {
+	HealthV1Service      *health_v1_service.HealthService
+	HealthV1Controller *health_v1_controller.HealthController
+
 	KafkaProduceService     *kafka_producer_service.KafkaProduceService
 	KafkaProducerController *kafka_producer_controller.KafkaProduceController
 
@@ -28,6 +34,9 @@ func NewApplication(env conf.Env) *Application {
 	redisInfra := infrastructure.NewRedisInfra()
 	middlewareInfra := infrastructure.NewMiddlewareInfra()
 	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	application.HealthV1Service = health_v1_service.NewHealthService()
+	application.HealthV1Controller = health_v1_controller.NewHealthController(application.HealthV1Service)
 
 	application.DiscountV1Service = discount_v1_service.NewDiscountService(postgresInfra, redisInfra)
 	application.DiscountV1Controller = discount_v1_controller.NewDiscountConttroller(application.DiscountV1Service, validate, middlewareInfra)
