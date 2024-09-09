@@ -238,7 +238,7 @@ func (d *DiscountService) DetailDiscount(id string) (res model.DiscountResponse,
 	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
 	defer cancel()
 
-	promotionString := fmt.Sprintf(`SELECT p.id, p.created_at, p.updated_at, p.deleted_at, p.uuid, p.name, p.promotion_type, p.code, p.start_time, p.end_time, p.shop_id, p.usage_quantity, p.usage_limit_per_user, pr.id, pr.uuid, pv.promotion_id, pr.sku, pr.name, pr.purchase_limit,pv.id, pv.uuid, pv.promotion_id, pv.product_id, pv.sku, pv.name, pv.discounted_price, pv.discounted_percentage, pv.stock_limit, pv.is_active FROM promotion.promotions p LEFT JOIN promotion.products pr on pr.promotion_id = p.uuid LEFT JOIN promotion.product_variants pv on pv.product_id = pr.uuid WHERE p.uuid = '%s' AND p.deleted_at IS NULL;`, id)
+	promotionString := `SELECT p.id, p.created_at, p.updated_at, p.deleted_at, p.uuid, p.name, p.promotion_type, p.code, p.start_time, p.end_time, p.shop_id, p.usage_quantity, p.usage_limit_per_user, pr.id, pr.uuid, pv.promotion_id, pr.sku, pr.name, pr.purchase_limit,pv.id, pv.uuid, pv.promotion_id, pv.product_id, pv.sku, pv.name, pv.discounted_price, pv.discounted_percentage, pv.stock_limit, pv.is_active FROM promotion.promotions p LEFT JOIN promotion.products pr on pr.promotion_id = p.uuid LEFT JOIN promotion.product_variants pv on pv.product_id = pr.uuid WHERE p.uuid = $1 AND p.deleted_at IS NULL;`
 
 	cache, err := d.RedisInfra.Client.Get(promotionString).Bytes()
 	if err == nil {
@@ -248,7 +248,7 @@ func (d *DiscountService) DetailDiscount(id string) (res model.DiscountResponse,
 		}
 	}
 
-	rows, err := d.PostgresInfra.DbReadPool.Query(ctx, promotionString)
+	rows, err := d.PostgresInfra.DbReadPool.Query(ctx, promotionString, id)
 	if err != nil {
 		return res, http.StatusInternalServerError, err
 	}
@@ -435,28 +435,36 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
 	defer cancel()
 
-	// promotionString := fmt.Sprintf(`SELECT id, created_at, updated_at, deleted_at, uuid, name, promotion_type, code, start_time, end_time, shop_id, usage_quantity, usage_limit_per_user FROM promotions WHERE deleted_at IS NULL ORDER BY %s LIMIT %s`, query.Sort, query.Size)
-
+	intVariable := 0
+	promotionInterface := []interface{}{}
 	promotionString := utils.PrepareSelectQuery(utils.PromotionTableName, utils.PromotionColumnsListForSelect)
 
 	if query.ShopID != "" {
-		promotionString += fmt.Sprintf("AND shop_id = '%s' ", query.ShopID)
+		intVariable++
+		promotionString += fmt.Sprintf("AND shop_id = $%d ", intVariable)
+		promotionInterface = append(promotionInterface, query.ShopID)
 	}
 
 	if query.Cursor != "" {
-		promotionString += fmt.Sprintf(" AND id > '%s' ", query.Cursor)
+		intVariable++ 
+		promotionString += fmt.Sprintf("AND id > $%d ", intVariable)
+		promotionInterface = append(promotionInterface, query.Cursor)
 	}
 
+	intVariable++
+	promotionString += fmt.Sprintf(`ORDER BY $%d `, intVariable)
 	if query.Sort != "" {
-		promotionString += fmt.Sprintf(`ORDER BY %s `, query.Sort)
+		promotionInterface = append(promotionInterface, query.Sort)
 	} else {
-		promotionString += `ORDER BY id DESC `
+		promotionInterface = append(promotionInterface, utils.DefaultOrder)
 	}
 
+	intVariable++
+	promotionString += fmt.Sprintf(`LIMIT $%d `, intVariable)
 	if query.Size != "" {
-		promotionString += fmt.Sprintf(`LIMIT %s;`, query.Size)
+		promotionInterface = append(promotionInterface, query.Size)
 	} else {
-		promotionString += fmt.Sprintf(`LIMIT %s;`, utils.DefaultSize)
+		promotionInterface = append(promotionInterface, utils.DefaultSize)
 	}
 
 	cache, err := d.RedisInfra.Client.Get(promotionString).Bytes()
@@ -467,7 +475,7 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 		}
 	}
 
-	promotionRows, err := d.PostgresInfra.DbReadPool.Query(ctx, promotionString)
+	promotionRows, err := d.PostgresInfra.DbReadPool.Query(ctx, promotionString, promotionInterface...)
 	if err != nil {
 		return res, http.StatusInternalServerError, err
 	}
