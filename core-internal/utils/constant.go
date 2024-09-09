@@ -10,6 +10,7 @@ const (
 const (
 	DefaultPage = 1
 	DefaultSize = "10"
+	DefaultOrder = "id DESC"
 )
 
 const (
