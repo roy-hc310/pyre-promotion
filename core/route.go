@@ -10,8 +10,9 @@ import (
 
 func Router(g *gin.Engine, application *Application) error {
 
-	route := g.Group("/api")
+	g.GET("", application.HealthV1Controller.Health)
 
+	route := g.Group("/api")
 	healthRoute := route.Group("/health")
 	health_v1.HealthV1Route(healthRoute, application.HealthV1Controller)
 

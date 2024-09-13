@@ -639,8 +639,8 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 
 func (d *DiscountService) DeleteDiscount(id string) (statusCode int, err error) {
 
-	queryString := fmt.Sprintf(`UPDATE promotions SET deleted_at = now() WHERE id = '%s' AND deleted_at IS NULL`, id)
-	_, err = d.PostgresInfra.DbWritePool.Exec(context.Background(), queryString)
+	queryString := `UPDATE promotions SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
+	_, err = d.PostgresInfra.DbWritePool.Exec(context.Background(), queryString, id)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
