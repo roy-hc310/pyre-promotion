@@ -7,22 +7,20 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: self-hosted
 
     steps:
-      - name: Install SSH client
-        run: sudo apt-get update && sudo apt-get install -y sshpass
-  
-      - name: Connect to master node and run kubectl commands as sudo
-        env:
-          SSH_PASS: ${{ secrets.SSH_PASS }}
+      - name: Install kubectl
+        env: 
+          HEHE: ${{ vars.KUBE }}
         run: |
-          sshpass -p "$SSH_PASS" ssh -t -o StrictHostKeyChecking=no rackal@10.1.47.61 "echo '$SSH_PASS' | sudo -S kubectl get nodes"
+          sudo apt-get update && sudo apt-get install -y kubectl
+          mkdir -p $HOME/.kube
+          echo "$HEHE" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          sudo kubectl get nodes
+          
   
-      # - name: Deploy new image to Kubernetes
-      #   env:
-      #     SSH_PASS: ${{ secrets.MASTER_NODE_SSH_PASS }}
-      #   run: |
-      #     sshpass -p "$SSH_PASS" ssh -t -o StrictHostKeyChecking=no rackal@10.1.47.61 "echo '$SSH_PASS' | sudo -S kubectl set image deployment/pyre-promotion pyre-promotion=${{ secrets.DOCKER_USER }}/pyre-promotion:latest"
+      
             
           
