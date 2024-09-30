@@ -15,9 +15,8 @@ jobs:
           HEHE: ${{ vars.KUBE }}
         run: |
           sudo apt-get update && sudo apt-get install -y kubectl
-          mkdir -p $HOME/.kube
-          echo "$HEHE" > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+          export KUBECONFIG="$HEHE"
+          echo 'export KUBECONFIG="$HEHE"' >> .bashrc
           sudo kubectl get nodes
           
   
