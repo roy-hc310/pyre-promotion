@@ -48,18 +48,20 @@ jobs:
         env: 
           HEHE: ${{ vars.KUBE }} 
         run: |
-          cat ${{ env.KUBE }}
           mkdir -p $HOME/.kube
           echo "$HEHE" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
           echo "Kube config contents: $HEHE"
 
+      - name: ping connection
+        run: ping 10.1.47.61
+
       - name: set kube context
         run: |
           kubectl config use-context kubernetes-admin@kubernetes
 
-      - name: deploy new image to kubernetes
-        run: |
-          kubectl get deployment
+      # - name: deploy new image to kubernetes
+      #   run: |
+      #     kubectl get deployment
           
           
