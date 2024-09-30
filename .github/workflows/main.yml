@@ -49,6 +49,7 @@ jobs:
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
+          cat $HOME/.kube/config
 
       - name: deploy new image to kubernetes
         run: |
