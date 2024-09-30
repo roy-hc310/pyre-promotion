@@ -11,7 +11,9 @@ jobs:
 
     steps:
       - name: set up kube config
+        env: 
+          HEHE: ${{ vars.KUBE }} 
         run: |
-          echo ${{ secrets.KUBE_CONFIG }}
-          cat ${{ secrets.KUBE_CONFIG }}
+          echo "this is my $HEHE"
+          
           
