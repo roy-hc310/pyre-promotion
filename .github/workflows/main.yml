@@ -44,9 +44,11 @@ jobs:
           version: v1.31.1
 
       - name: set up kube config
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          echo "$KUBE_CONFIG" > $HOME/.kube/config
 
       - name: deploy new image to kubernetes
         run: |
