@@ -35,7 +35,7 @@ jobs:
 
 
   deploy:
-    runs-on: ubuntu-22.04
+    runs-on: self-hosted
     needs: build
     steps:
       - name: set up kubectl
