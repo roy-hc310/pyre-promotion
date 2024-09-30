@@ -35,7 +35,7 @@ jobs:
 
 
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-22.04
     needs: build
     steps:
       - name: set up kubectl
@@ -52,4 +52,5 @@ jobs:
 
       - name: deploy new image to kubernetes
         run: |
-          kubectl set image deployment/pyre-promotion pyre-promotion=${{ secrets.DOCKER_USER }}/pyre-promotion:latest
+          kubectl get deployment
+          # kubectl set image deployment/pyre-promotion pyre-promotion=${{ secrets.DOCKER_USER }}/pyre-promotion:latest
