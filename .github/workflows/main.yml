@@ -46,6 +46,7 @@ jobs:
 
       - name: set up kube config
         run: |
+          cat ${{ env.KUBE }}
           mkdir -p $HOME/.kube
           echo "${{ env.KUBE }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
