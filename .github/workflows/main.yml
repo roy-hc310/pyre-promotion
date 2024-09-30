@@ -50,10 +50,13 @@ jobs:
         run: |
           cat ${{ env.KUBE }}
           mkdir -p $HOME/.kube
-          echo "$HEHE"
           echo "$HEHE" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
-          echo "Kube config contents:"
+          echo "Kube config contents: $HEHE"
+
+      - name: set kube context
+        run: |
+          kubectl config use-context kubernetes-admin@kubernetes
 
       - name: deploy new image to kubernetes
         run: |
