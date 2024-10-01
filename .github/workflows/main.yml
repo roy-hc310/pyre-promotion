@@ -10,16 +10,24 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Install kubectl
-        env: 
-          HEHE: ${{ vars.KUBE }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y kubectl
-          export KUBECONFIG="$HEHE"
-          echo 'export KUBECONFIG="$HEHE"' >> .bashrc
-          sudo kubectl get nodes
-          
-  
-      
-            
-          
+      - name: checkout repository
+        uses: actions/checkout@v3
+
+      - name: create .env file
+        run: echo "${{ vars.ENV }}" > .env
+
+      - name: login to docker hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: set up docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USER }}/pyre-promotion:latest
