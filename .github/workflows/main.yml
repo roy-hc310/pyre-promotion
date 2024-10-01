@@ -15,7 +15,6 @@ jobs:
 
       - name: create .env file
         run: |
-          echo "${{ vars.ENV }}"
           echo "${{ vars.ENV }}" > .env
 
       - name: login to docker hub
