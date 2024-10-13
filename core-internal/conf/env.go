@@ -5,6 +5,11 @@ type Env struct {
 	Port       string `mapstructure:"PORT"`
 	Production bool   `mapstructure:"PRODUCTION"`
 
+	GRPCHost string `mapstructure:"GRPC_HOST"`
+	GRPCPort string `mapstructure:"GRPC_PORT"`
+
+	GRPCProductHost string `mapstructure:"GRPC_PRODUCT_HOST"`
+
 	DBRead struct {
 		Host   string `mapstructure:"DB_READ_HOST"`
 		Port   string `mapstructure:"DB_READ_PORT"`
