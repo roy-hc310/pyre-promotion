@@ -34,11 +34,12 @@ func NewApplication(env conf.Env) *Application {
 	redisInfra := infrastructure.NewRedisInfra()
 	middlewareInfra := infrastructure.NewMiddlewareInfra()
 	validate := validator.New(validator.WithRequiredStructEnabled())
+	productProtoClientInfra := infrastructure.NewProductProtoClientInfra()
 
 	application.HealthV1Service = health_v1_service.NewHealthService()
 	application.HealthV1Controller = health_v1_controller.NewHealthController(application.HealthV1Service)
 
-	application.DiscountV1Service = discount_v1_service.NewDiscountService(postgresInfra, redisInfra)
+	application.DiscountV1Service = discount_v1_service.NewDiscountService(postgresInfra, redisInfra, productProtoClientInfra)
 	application.DiscountV1Controller = discount_v1_controller.NewDiscountConttroller(application.DiscountV1Service, validate, middlewareInfra)
 
 	application.KafkaProduceService = kafka_producer_service.NewKafkaProduceService(kafkaInfra.Client)

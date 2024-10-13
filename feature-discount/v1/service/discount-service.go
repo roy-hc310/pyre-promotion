@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"pyre-promotion/core-internal/infrastructure"
 	core_model "pyre-promotion/core-internal/model"
 	"pyre-promotion/core-internal/utils"
@@ -21,12 +22,14 @@ import (
 type DiscountService struct {
 	PostgresInfra *infrastructure.PostgresInfra
 	RedisInfra    *infrastructure.RedisInfra
+	ProductProtoClientInfra *infrastructure.ProductProtoClientInfra
 }
 
-func NewDiscountService(postgresInfra *infrastructure.PostgresInfra, redisInfra *infrastructure.RedisInfra) *DiscountService {
+func NewDiscountService(postgresInfra *infrastructure.PostgresInfra, redisInfra *infrastructure.RedisInfra, productProtoClientInfra *infrastructure.ProductProtoClientInfra) *DiscountService {
 	return &DiscountService{
 		PostgresInfra: postgresInfra,
 		RedisInfra:    redisInfra,
+		ProductProtoClientInfra: productProtoClientInfra,
 	}
 }
 
@@ -34,6 +37,20 @@ func (d *DiscountService) CreateDiscount(data model.DiscountRequest) (res core_m
 
 	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
 	defer cancel()
+
+	productIds := []string{}
+	for i := 0; i < len(data.Products); i++ {
+		productIds = append(productIds, data.Products[i].SKU)
+	}
+
+	success, err := d.ProductProtoClientInfra.GetProduct(productIds)
+	if err != nil {
+		return res, http.StatusInternalServerError, err
+	}
+
+	if !success.Success {
+		return res, http.StatusBadRequest, errors.New("product not found")
+	}
 
 	tx, err := d.PostgresInfra.DbWritePool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {

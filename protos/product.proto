@@ -1,0 +1,16 @@
+syntax = "proto3";
+option go_package = "core-internal/proto;product_proto";
+package product_proto;
+
+
+message GetProductRequest {
+    repeated string productIds = 1;
+}
+
+message GetProductResponse {
+    bool success = 1;
+}
+
+service ProductProto {
+    rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+}

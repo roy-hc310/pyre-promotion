@@ -30,3 +30,5 @@ func main() {
 // migrate create -ext sql -dir ./core/sqlc/migrations -seq init_tables
 
 // migrate -database "postgres://postgres:admin@localhost:5432/postgres?sslmode=disable" -path core-internal/sqlc/migrations up
+
+// protoc --plugin=protoc-gen-ts_proto=".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd" --ts_proto_out=./src ./proto/invoicer.proto
