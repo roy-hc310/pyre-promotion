@@ -34,7 +34,7 @@ func PrepareUpdateQuery(tableName string, colunmsName []string) string {
 	}
 	finalPlaceholder := strings.Join(placeholders, ", ")
 
-	queryString := fmt.Sprintf(`UPDATE %s SET %s WHERE uuid = %s`, tableName, finalPlaceholder, fmt.Sprintf("$%d", len(colunmsName)+1))
+	queryString := fmt.Sprintf(`UPDATE %s SET %s WHERE uuid = %s AND deleted_at IS NULL FOR UPDATE`, tableName, finalPlaceholder, fmt.Sprintf("$%d", len(colunmsName)+1))
 
 	return queryString
 }
