@@ -14,11 +14,6 @@ const (
 )
 
 const (
-	DefaultContextTimeOut = time.Second * 100000000
-	DefaultRedisTimeOut   = time.Second * 10
-)
-
-const (
 	TopicCreateBulkDiscount = "topic-create-bulk-discount"
 )
 
@@ -35,6 +30,11 @@ const (
 	PromotionTypeBundleDeal      = "bundle-deal"
 	PromotionTypeVoucher         = "voucher"
 	PromotionTypeVoucherShipping = "voucher-shipping"
+)
+
+var (
+	DefaultContextTimeOut = time.Second * 10000
+	DefaultRedisTimeOut   = time.Second * 10000
 )
 
 var PromotionColumnsListForInsert = []string{"uuid", "name", "promotion_type", "code", "start_time", "end_time", "shop_id", "usage_quantity", "usage_limit_per_user"}

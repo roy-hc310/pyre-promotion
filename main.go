@@ -12,6 +12,7 @@ func main() {
 	err := utils.LoadGlobalEnv(".")
 	if err != nil {
 		log.Error().Msg(err.Error())
+		return
 	}
 
 	g := gin.Default()
@@ -21,6 +22,7 @@ func main() {
 	err = core.Router(g, application)
 	if err != nil {
 		log.Error().Msg(err.Error())
+		return
 	}
 
 	g.Run(":" + utils.GlobalEnv.Port)

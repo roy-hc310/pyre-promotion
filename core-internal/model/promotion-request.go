@@ -11,7 +11,7 @@ type CorePromotion struct {
 	Code              string        `json:"code"`
 	StartTime         time.Time     `json:"start_time" validate:"required"`
 	EndTime           time.Time     `json:"end_time" validate:"required"`
-	ShopID            string        `json:"shop_id" validate:"required"`
+	ShopID            string        `json:"shop_id"`
 	UsageQuantity     int           `json:"usage_quantity"`
 	UsageLimitPerUser int           `json:"usage_limit_per_user"`
 	Products          []CoreProduct `json:"products" validate:"dive"`

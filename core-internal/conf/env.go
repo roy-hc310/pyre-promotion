@@ -1,14 +1,17 @@
 package conf
 
 type Env struct {
-	Host       string `mapstructure:"HOST"`
-	Port       string `mapstructure:"PORT"`
-	Production bool   `mapstructure:"PRODUCTION"`
+	Port           string `mapstructure:"PORT"`
+	Debugging      bool `mapstructure:"DEBUGGING"`
+	ContextTimeOut int `mapstructure:"CONTEXT_TIMEOUT"`
 
 	GRPCHost string `mapstructure:"GRPC_HOST"`
 	GRPCPort string `mapstructure:"GRPC_PORT"`
 
 	GRPCProductHost string `mapstructure:"GRPC_PRODUCT_HOST"`
+
+	OtelHttpExporter string `mapstructure:"OTEL_HTTP_EXPORTER"`
+	OtelGrpcExporter string `mapstructure:"OTEL_GRPC_EXPORTER"`
 
 	DBRead struct {
 		Host   string `mapstructure:"DB_READ_HOST"`
@@ -29,27 +32,25 @@ type Env struct {
 	}
 
 	Kafka struct {
-		HostPort      string `mapstructure:"KAFKA_HOST_PORT"`
+		Host      string `mapstructure:"KAFKA_HOST"`
 		ConsumerGroup string `mapstructure:"KAFKA_CONSUMER_GROUP"`
 	}
 
 	Redis struct {
-		HostPort string `mapstructure:"REDIS_HOST_PORT"`
+		Host string `mapstructure:"REDIS_HOST_PORT"`
 		Pass     string `mapstructure:"REDIS_PASS"`
 		DB       string `mapstructure:"REDIS_DB"`
-		TimeOut  string `mapstructure:"REDIS_TIMEOUT"`
+		TimeOut  int64 `mapstructure:"REDIS_TIMEOUT"`
 	}
 
 	Elastic struct {
 		Host string `mapstructure:"ELASTIC_HOST"`
-		Port string `mapstructure:"ELASTIC_PORT"`
 		User string `mapstructure:"ELASTIC_USER"`
 		Pass string `mapstructure:"ELASTIC_PASS"`
 	}
 
 	KeyCloak struct {
 		Host         string `mapstructure:"KEYCLOAK_HOST"`
-		Port         string `mapstructure:"KEYCLOAK_PORT"`
 		Realm        string `mapstructure:"KEYCLOAK_REALM"`
 		User         string `mapstructure:"KEYCLOAK_USER"`
 		Pass         string `mapstructure:"KEYCLOAK_PASS"`
