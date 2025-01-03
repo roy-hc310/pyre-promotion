@@ -17,46 +17,49 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DiscountService struct {
-	PostgresInfra *infrastructure.PostgresInfra
-	RedisInfra    *infrastructure.RedisInfra
+	PostgresInfra           *infrastructure.PostgresInfra
+	RedisInfra              *infrastructure.RedisInfra
 	ProductProtoClientInfra *infrastructure.ProductProtoClientInfra
+	OtelInfra               *infrastructure.OtelInfra
 }
 
-func NewDiscountService(postgresInfra *infrastructure.PostgresInfra, redisInfra *infrastructure.RedisInfra, productProtoClientInfra *infrastructure.ProductProtoClientInfra) *DiscountService {
+func NewDiscountService(postgresInfra *infrastructure.PostgresInfra, redisInfra *infrastructure.RedisInfra, productProtoClientInfra *infrastructure.ProductProtoClientInfra, otelInfra *infrastructure.OtelInfra) *DiscountService {
 	return &DiscountService{
-		PostgresInfra: postgresInfra,
-		RedisInfra:    redisInfra,
+		PostgresInfra:           postgresInfra,
+		RedisInfra:              redisInfra,
 		ProductProtoClientInfra: productProtoClientInfra,
+		OtelInfra:               otelInfra,
 	}
 }
 
-func (d *DiscountService) CreateDiscount(data model.DiscountRequest) (res core_model.CoreIdResponse, statusCode int, err error) {
+func (d *DiscountService) CreateDiscount(ctx context.Context, data model.DiscountRequest) (res core_model.CoreIdResponse, traceID string, statusCode int, err error) {
+	ctx, span := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount")
+	traceID = span.SpanContext().TraceID().String()
 
-	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
-	defer cancel()
-
+	_, validationSpan := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount-Validation")
 	productIds := []string{}
 	for i := 0; i < len(data.Products); i++ {
 		productIds = append(productIds, data.Products[i].SKU)
 	}
 
-	success, err := d.ProductProtoClientInfra.GetProduct(productIds)
-	if err != nil {
-		return res, http.StatusInternalServerError, err
+	if utils.GlobalEnv.Debugging == false {
+		success, err := d.ProductProtoClientInfra.GetProduct(productIds)
+		if err != nil {
+			return res, traceID, http.StatusInternalServerError, err
+		}
+
+		if !success.Success {
+			return res, traceID, http.StatusBadRequest, errors.New("product not found")
+		}
 	}
 
-	if !success.Success {
-		return res, http.StatusBadRequest, errors.New("product not found")
-	}
-
-	tx, err := d.PostgresInfra.DbWritePool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return res, http.StatusInternalServerError, err
-	}
-	defer tx.Rollback(ctx)
+	validationSpan.End()
+	
 
 	// promotions
 	promotionUUID := uuid.New().String()
@@ -73,9 +76,25 @@ func (d *DiscountService) CreateDiscount(data model.DiscountRequest) (res core_m
 		promotionParams = append(promotionParams, promotion...)
 	}
 
+	_, createTxSpan := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount-Tx")
+
+	tx, err := d.PostgresInfra.DbWritePool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return res, traceID, http.StatusInternalServerError, err
+	}
+	defer tx.Rollback(ctx)
+
+	createTxSpan.End()
+
+	_, dbSpan := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount-DB")
+	dbSpan.AddEvent("insert promotions", trace.WithAttributes(
+		attribute.String("query", promotionString),
+		attribute.String("params", fmt.Sprintf("%v", promotionParams)),
+	))
+
 	_, err = tx.Exec(ctx, promotionString, promotionParams...)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 
 	// products
@@ -120,9 +139,14 @@ func (d *DiscountService) CreateDiscount(data model.DiscountRequest) (res core_m
 		productParams = append(productParams, product...)
 	}
 
+	dbSpan.AddEvent("insert products", trace.WithAttributes(
+		attribute.String("query", productString),
+		attribute.String("params", fmt.Sprintf("%v", productParams)),
+	))
+
 	_, err = tx.Exec(ctx, productString, productParams...)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 
 	// variants
@@ -133,30 +157,31 @@ func (d *DiscountService) CreateDiscount(data model.DiscountRequest) (res core_m
 		variantParams = append(variantParams, variant...)
 	}
 
+	dbSpan.AddEvent("insert variants", trace.WithAttributes(
+		attribute.String("query", variantString),
+		attribute.String("params", fmt.Sprintf("%v", variantParams)),
+	))
+
 	_, err = tx.Exec(ctx, variantString, variantParams...)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 
+	dbSpan.End()
+	span.End()
 	res.Id = promotionUUID
-
-	return res, http.StatusOK, nil
+	
+	return res, traceID, http.StatusOK, nil
 }
 
-func (d *DiscountService) CreateBulkDiscount(data []model.DiscountRequest) (res []core_model.CoreIdResponse, statusCode int, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
-	defer cancel()
-
-	tx, err := d.PostgresInfra.DbWritePool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return res, http.StatusInternalServerError, err
-	}
-	defer tx.Rollback(ctx)
+func (d *DiscountService) CreateBulkDiscount(ctx context.Context, data []model.DiscountRequest) (res []core_model.CoreIdResponse, traceID string, statusCode int, err error) {
+	ctx, span := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount")
+	traceID = span.SpanContext().TraceID().String()
 
 	response := []core_model.CoreIdResponse{}
 
@@ -213,9 +238,26 @@ func (d *DiscountService) CreateBulkDiscount(data []model.DiscountRequest) (res 
 	for _, promotion := range promotionsInterface {
 		promotionParams = append(promotionParams, promotion...)
 	}
+
+	_, createTxSpan := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount-Tx")
+
+	tx, err := d.PostgresInfra.DbWritePool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return res, traceID, http.StatusInternalServerError, err
+	}
+	defer tx.Rollback(ctx)
+
+	createTxSpan.End()
+
+	_, dbSpan := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount-DB")
+	dbSpan.AddEvent("insert promotions", trace.WithAttributes(
+		attribute.String("query", promotionString),
+		attribute.String("params", fmt.Sprintf("%v", promotionParams)),
+	))
+
 	_, err = tx.Exec(ctx, promotionString, promotionParams...)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 
 	// products
@@ -224,9 +266,15 @@ func (d *DiscountService) CreateBulkDiscount(data []model.DiscountRequest) (res 
 	for _, product := range productsInterface {
 		productParams = append(productParams, product...)
 	}
+
+	dbSpan.AddEvent("insert products", trace.WithAttributes(
+		attribute.String("query", productString),
+		attribute.String("params", fmt.Sprintf("%v", productParams)),
+	))
+
 	_, err = tx.Exec(ctx, productString, productParams...)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 
 	// variants
@@ -235,25 +283,33 @@ func (d *DiscountService) CreateBulkDiscount(data []model.DiscountRequest) (res 
 	for _, variant := range variantsInterface {
 		variantParams = append(variantParams, variant...)
 	}
+
+	dbSpan.AddEvent("insert variants", trace.WithAttributes(
+		attribute.String("query", variantString),
+		attribute.String("params", fmt.Sprintf("%v", variantParams)),
+	))
+
 	_, err = tx.Exec(ctx, variantString, variantParams...)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
+
+	dbSpan.End()
+	span.End()
 
 	res = response
 
-	return res, http.StatusOK, nil
+	return res, traceID, http.StatusOK, nil
 }
 
-func (d *DiscountService) DetailDiscount(id string) (res model.DiscountResponse, statusCode int, err error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
-	defer cancel()
+func (d *DiscountService) DetailDiscount(ctx context.Context, id string) (res model.DiscountResponse, traceID string, statusCode int, err error) {
+	ctx, span := d.OtelInfra.Tracer.Start(ctx, "ListDiscounts")
+	traceID = span.SpanContext().TraceID().String()
 
 	promotionString := `SELECT p.id, p.created_at, p.updated_at, p.deleted_at, p.uuid, p.name, p.promotion_type, p.code, p.start_time, p.end_time, p.shop_id, p.usage_quantity, p.usage_limit_per_user, pr.id, pr.uuid, pv.promotion_id, pr.sku, pr.name, pr.purchase_limit,pv.id, pv.uuid, pv.promotion_id, pv.product_id, pv.sku, pv.name, pv.discounted_price, pv.discounted_percentage, pv.stock_limit, pv.is_active FROM promotion.promotions p LEFT JOIN promotion.products pr on pr.promotion_id = p.uuid LEFT JOIN promotion.product_variants pv on pv.product_id = pr.uuid WHERE p.uuid = $1 AND p.deleted_at IS NULL;`
 
@@ -261,15 +317,23 @@ func (d *DiscountService) DetailDiscount(id string) (res model.DiscountResponse,
 	if err == nil {
 		err = json.Unmarshal(cache, &res)
 		if err == nil {
-			return res, http.StatusOK, nil
+			return res, traceID, http.StatusOK, nil
 		}
 	}
 
+	_, dbSpan := d.OtelInfra.Tracer.Start(ctx, "DetailDiscount-DB")
+	dbSpan.AddEvent("get promotion", trace.WithAttributes(
+		attribute.String("query", promotionString),
+		attribute.String("params", fmt.Sprintf("%v", id)),
+	))
+
 	rows, err := d.PostgresInfra.DbReadPool.Query(ctx, promotionString, id)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 	defer rows.Close()
+
+	dbSpan.End()
 
 	products := []core_model.CoreProduct{}
 	promotion := core_model.CorePromotion{}
@@ -314,7 +378,7 @@ func (d *DiscountService) DetailDiscount(id string) (res model.DiscountResponse,
 			&rawProductVariant.StockLimit,
 			&rawProductVariant.IsActive)
 		if err != nil {
-			return res, http.StatusInternalServerError, err
+			return res, traceID, http.StatusInternalServerError, err
 		}
 
 		if _, ok := mapProductIdVariants[rawProductVariant.ProductID]; !ok {
@@ -340,21 +404,17 @@ func (d *DiscountService) DetailDiscount(id string) (res model.DiscountResponse,
 
 	d.RedisInfra.Client.Set(promotionString, promotion, utils.DefaultRedisTimeOut)
 
+	span.End()
+
 	promotion.Products = products
 	res.CorePromotion = promotion
-	return res, http.StatusOK, nil
+	return res, traceID, http.StatusOK, nil
 }
 
-func (d *DiscountService) UpdateDiscount(id string, data model.DiscountRequest) (statusCode int, err error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
-	defer cancel()
-
-	tx, err := d.PostgresInfra.DbWritePool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	defer tx.Rollback(ctx)
+func (d *DiscountService) UpdateDiscount(ctx context.Context, id string, data model.DiscountRequest) (traceID string, statusCode int, err error) {
+	ctx, span := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount")
+	traceID = span.SpanContext().TraceID().String()
+	
 
 	startTime := data.StartTime.Format(time.RFC3339)
 	endTime := data.EndTime.Format(time.RFC3339)
@@ -365,19 +425,35 @@ func (d *DiscountService) UpdateDiscount(id string, data model.DiscountRequest) 
 
 	promotionString := utils.PrepareUpdateQuery(utils.PromotionTableName, utils.PromotionColumnsListForUpdate)
 
+	_, updateTxSpan := d.OtelInfra.Tracer.Start(ctx, "UpdateDiscount-Tx")
+
+	tx, err := d.PostgresInfra.DbWritePool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return traceID, http.StatusInternalServerError, err
+	}
+	defer tx.Rollback(ctx)
+
+	updateTxSpan.End()
+
+	_, dbSpan := d.OtelInfra.Tracer.Start(ctx, "UpdateDiscount-DB")
+	dbSpan.AddEvent("update promotion", trace.WithAttributes(
+		attribute.String("query", promotionString),
+		attribute.String("params", fmt.Sprintf("%v", promotionInterface)),
+	))
+
 	_, err = tx.Exec(ctx, promotionString, promotionInterface...)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return traceID, http.StatusInternalServerError, err
 	}
 
 	_, err = tx.Exec(ctx, "DELETE FROM products WHERE promotion_id = $1", id)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return traceID, http.StatusInternalServerError, err
 	}
 
 	_, err = tx.Exec(ctx, "DELETE FROM product_variants WHERE promotion_id = $1", id)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return traceID, http.StatusInternalServerError, err
 	}
 
 	// products
@@ -422,9 +498,14 @@ func (d *DiscountService) UpdateDiscount(id string, data model.DiscountRequest) 
 		productParams = append(productParams, product...)
 	}
 
+	dbSpan.AddEvent("insert products", trace.WithAttributes(
+		attribute.String("query", productString),
+		attribute.String("params", fmt.Sprintf("%v", productParams)),
+	))
+
 	_, err = tx.Exec(ctx, productString, productParams...)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return traceID, http.StatusInternalServerError, err
 	}
 
 	// variants
@@ -435,22 +516,30 @@ func (d *DiscountService) UpdateDiscount(id string, data model.DiscountRequest) 
 		variantParams = append(variantParams, variant...)
 	}
 
+	dbSpan.AddEvent("insert variants", trace.WithAttributes(
+		attribute.String("query", variantString),
+		attribute.String("params", fmt.Sprintf("%v", variantParams)),
+	))
+
 	_, err = tx.Exec(ctx, variantString, variantParams...)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return traceID, http.StatusInternalServerError, err
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return traceID, http.StatusInternalServerError, err
 	}
 
-	return http.StatusOK, nil
+	dbSpan.End()
+	span.End()
+
+	return traceID, http.StatusOK, nil
 }
 
-func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model.DiscountResponse, statusCode int, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
-	defer cancel()
+func (d *DiscountService) ListDiscounts(ctx context.Context, query core_model.CoreQuery) (res []model.DiscountResponse, traceID string, statusCode int, err error) {
+	ctx, span := d.OtelInfra.Tracer.Start(ctx, "ListDiscounts")
+	traceID = span.SpanContext().TraceID().String()
 
 	intVariable := 0
 	promotionInterface := []interface{}{}
@@ -463,7 +552,7 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 	}
 
 	if query.Cursor != "" {
-		intVariable++ 
+		intVariable++
 		promotionString += fmt.Sprintf("AND id > $%d ", intVariable)
 		promotionInterface = append(promotionInterface, query.Cursor)
 	}
@@ -488,13 +577,19 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 	if err == nil {
 		err = json.Unmarshal(cache, &res)
 		if err == nil {
-			return res, http.StatusOK, nil
+			return res, traceID, http.StatusOK, nil
 		}
 	}
 
+	_, dbSpan := d.OtelInfra.Tracer.Start(ctx, "ListDiscounts-DB")
+	dbSpan.AddEvent("get promotions", trace.WithAttributes(
+		attribute.String("query", promotionString),
+		attribute.String("params", fmt.Sprintf("%v", promotionInterface)),
+		))
+
 	promotionRows, err := d.PostgresInfra.DbReadPool.Query(ctx, promotionString, promotionInterface...)
 	if err != nil {
-		return res, http.StatusInternalServerError, err
+		return res, traceID, http.StatusInternalServerError, err
 	}
 	defer promotionRows.Close()
 
@@ -519,7 +614,7 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 		)
 
 		if err != nil {
-			return res, http.StatusInternalServerError, err
+			return res, traceID, http.StatusInternalServerError, err
 		}
 
 		promotionsId = append(promotionsId, fmt.Sprintf(`'%s'`, rawPromotion.UUID))
@@ -530,7 +625,8 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 	}
 
 	if len(promotionsId) == 0 {
-		return promotions, http.StatusOK, nil
+		dbSpan.End()
+		return promotions, traceID, http.StatusOK, nil
 	}
 
 	var wg sync.WaitGroup
@@ -545,6 +641,10 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 
 		productString := utils.PrepareSelectQuery(utils.ProductTableName, utils.ProductColumnsListForSelect)
 		productString += fmt.Sprintf("AND promotion_id IN (%s) ", strings.Join(promotionsId, ", "))
+
+		dbSpan.AddEvent("get products", trace.WithAttributes(
+			attribute.String("params", productString),
+		))
 
 		productRows, err := d.PostgresInfra.DbReadPool.Query(ctx, productString)
 		if err != nil {
@@ -585,6 +685,9 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 
 		variantString += fmt.Sprintf("AND promotion_id IN (%s) ", strings.Join(promotionsId, ", "))
 
+		dbSpan.AddEvent("get variants", trace.WithAttributes(
+			attribute.String("query", variantString),
+			))
 		variantRows, err := d.PostgresInfra.DbReadPool.Query(ctx, variantString)
 		if err != nil {
 			errChan <- err
@@ -626,10 +729,12 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 
 	for err := range errChan {
 		if err != nil {
-			return res, http.StatusInternalServerError, err
+			return res, traceID, http.StatusInternalServerError, err
 		}
 	}
 
+	dbSpan.End()
+	_, mappingSpan := d.OtelInfra.Tracer.Start(ctx, "ListDiscounts-Mapping")
 	for i := 0; i < len(promotions); i++ {
 		var products []core_model.CoreProduct
 
@@ -649,18 +754,28 @@ func (d *DiscountService) ListDiscounts(query core_model.CoreQuery) (res []model
 		promotions[i].Products = products
 	}
 
+	mappingSpan.End()
+
 	d.RedisInfra.Client.Set(promotionString, promotions, utils.DefaultRedisTimeOut)
 
-	return promotions, http.StatusOK, nil
+	span.End()
+	return promotions, traceID, http.StatusOK, nil
 }
 
-func (d *DiscountService) DeleteDiscount(id string) (statusCode int, err error) {
+func (d *DiscountService) DeleteDiscount(ctx context.Context, id string) (traceID string, statusCode int, err error) {
+	ctx, span := d.OtelInfra.Tracer.Start(ctx, "CreateDiscount")
+	traceID = span.SpanContext().TraceID().String()
+
+	_, dbSpan := d.OtelInfra.Tracer.Start(ctx, "DeleteDiscount-DB")
 
 	queryString := `UPDATE promotions SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
 	_, err = d.PostgresInfra.DbWritePool.Exec(context.Background(), queryString, id)
 	if err != nil {
-		return http.StatusInternalServerError, err
+		return traceID, http.StatusInternalServerError, err
 	}
 
-	return http.StatusOK, nil
+	dbSpan.End()
+	span.End()
+
+	return traceID, http.StatusOK, nil
 }

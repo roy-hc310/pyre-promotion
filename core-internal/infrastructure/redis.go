@@ -2,7 +2,6 @@ package infrastructure
 
 import (
 	"pyre-promotion/core-internal/utils"
-	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -15,12 +14,11 @@ type RedisInfra struct {
 
 func NewRedisInfra() *RedisInfra {
 
-	timeOut, _ := strconv.Atoi(utils.GlobalEnv.Redis.TimeOut)
 	client := redis.NewClient(&redis.Options{
-		Addr:        utils.GlobalEnv.Redis.HostPort,
+		Addr:        utils.GlobalEnv.Redis.Host,
 		Password:    utils.GlobalEnv.Redis.Pass,
 		DB:          0,
-		DialTimeout: time.Second * time.Duration(timeOut),
+		DialTimeout: time.Second * time.Duration(utils.GlobalEnv.Redis.TimeOut),
 		MaxRetries:  0,
 	})
 

@@ -52,7 +52,8 @@ func (k *KafkaConsumeService) HandleTopic(record *kgo.Record) {
 			log.Error().Msg(err.Error())
 		}
 
-		_, _, err = k.DiscountService.CreateBulkDiscount(body)
+		ctx, _ := context.WithTimeout(context.Background(), utils.DefaultContextTimeOut)
+		_, _, _, err = k.DiscountService.CreateBulkDiscount(ctx, body)
 		if err != nil {
 			log.Error().Msg(err.Error())
 		}
