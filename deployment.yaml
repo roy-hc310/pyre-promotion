@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyre-promotion-deployment
+  namespace: dev
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pyre-promotion-pod
+  template:
+    metadata:
+      labels:
+        app: pyre-promotion-pod
+    spec:
+      containers:
+        - name: pyre-promotion-container
+          image: hoadc/pyre-promotion:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: pyre-promotion-config

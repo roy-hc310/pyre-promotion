@@ -15,10 +15,10 @@ type RedisInfra struct {
 func NewRedisInfra() *RedisInfra {
 
 	client := redis.NewClient(&redis.Options{
-		Addr:        utils.GlobalEnv.Redis.Host,
-		Password:    utils.GlobalEnv.Redis.Pass,
+		Addr:        utils.GlobalEnv.RedisHost,
+		Password:    utils.GlobalEnv.RedisPass,
 		DB:          0,
-		DialTimeout: time.Second * time.Duration(utils.GlobalEnv.Redis.TimeOut),
+		DialTimeout: time.Second * time.Duration(utils.GlobalEnv.RedisTimeOut),
 		MaxRetries:  0,
 	})
 

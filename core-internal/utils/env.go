@@ -2,6 +2,8 @@ package utils
 
 import (
 	"pyre-promotion/core-internal/conf"
+	"reflect"
+	// "strings"
 
 	"github.com/spf13/viper"
 )
@@ -9,22 +11,21 @@ import (
 var GlobalEnv conf.Env
 
 func LoadGlobalEnv(path string) (err error) {
+
 	viper.AddConfigPath(path)
 	viper.SetConfigType("env")
 	viper.SetConfigFile(".env")
-
-	err = viper.ReadInConfig()
-	if err != nil {
-		return err
+	viper.ReadInConfig()
+	
+	globalEnvType := reflect.TypeOf(conf.Env{})
+	for i := 0; i < globalEnvType.NumField(); i++ {
+		field := globalEnvType.Field(i)
+		fieldTag := field.Tag.Get("mapstructure")
+		if fieldTag != "" {
+			viper.BindEnv(fieldTag)
+		}
 	}
 
 	viper.Unmarshal(&GlobalEnv)
-	viper.Unmarshal(&GlobalEnv.DBRead)
-	viper.Unmarshal(&GlobalEnv.DBWrite)
-	viper.Unmarshal(&GlobalEnv.Kafka)
-	viper.Unmarshal(&GlobalEnv.Redis)
-	viper.Unmarshal(&GlobalEnv.Elastic)
-	viper.Unmarshal(&GlobalEnv.KeyCloak)
-
 	return nil
 }

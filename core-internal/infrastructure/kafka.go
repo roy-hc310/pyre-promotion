@@ -16,8 +16,8 @@ func NewKafkaInfra() *KafkaInfra {
 
 	client, err := kgo.NewClient(
 		kgo.AllowAutoTopicCreation(),
-		kgo.SeedBrokers(strings.Split(utils.GlobalEnv.Kafka.Host, ",")...),
-		kgo.ConsumerGroup(utils.GlobalEnv.Kafka.ConsumerGroup),
+		kgo.SeedBrokers(strings.Split(utils.GlobalEnv.KafkaHost, ",")...),
+		kgo.ConsumerGroup(utils.GlobalEnv.KafkaConsumerGroup),
 		kgo.ConsumeTopics(
 			utils.TopicCreateBulkDiscount,
 		),
