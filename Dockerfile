@@ -19,7 +19,7 @@ WORKDIR /root/
 # Copying the binary
 COPY --from=builder /app/pyre-promotion . 
 # Copying the .env file
-COPY --from=builder /app/.env .
+# COPY --from=builder /app/.env .
 
 EXPOSE 8000
 

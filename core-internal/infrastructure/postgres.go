@@ -22,7 +22,7 @@ type PostgresInfra struct {
 
 func NewPostgresInfra() *PostgresInfra {
 	dsnRead := fmt.Sprintf("host=%s user=%s password=%s dbname=%s search_path=%s port=%s sslmode=disable TimeZone=Asia/Shanghai",
-		utils.GlobalEnv.DBRead.Host, utils.GlobalEnv.DBRead.User, utils.GlobalEnv.DBRead.Pass, utils.GlobalEnv.DBRead.Name, utils.GlobalEnv.DBRead.Schema, utils.GlobalEnv.DBRead.Port)
+		utils.GlobalEnv.DBReadHost, utils.GlobalEnv.DBReadUser, utils.GlobalEnv.DBReadPass, utils.GlobalEnv.DBReadName, utils.GlobalEnv.DBReadSchema, utils.GlobalEnv.DBReadPort)
 
 	dbReadConfig, err := pgxpool.ParseConfig(dsnRead)
 	if err != nil {
@@ -42,7 +42,7 @@ func NewPostgresInfra() *PostgresInfra {
 	readQuery := sqlc.New(dbReadPool)
 
 	dsnWrite := fmt.Sprintf("host=%s user=%s password=%s dbname=%s search_path=%s port=%s sslmode=disable TimeZone=Asia/Shanghai",
-		utils.GlobalEnv.DBWrite.Host, utils.GlobalEnv.DBWrite.User, utils.GlobalEnv.DBWrite.Pass, utils.GlobalEnv.DBWrite.Name, utils.GlobalEnv.DBWrite.Schema, utils.GlobalEnv.DBWrite.Port)
+		utils.GlobalEnv.DBWriteHost, utils.GlobalEnv.DBWriteUser, utils.GlobalEnv.DBWritePass, utils.GlobalEnv.DBWriteName, utils.GlobalEnv.DBWriteSchema, utils.GlobalEnv.DBWritePort)
 
 	dbWriteConfig, err := pgxpool.ParseConfig(dsnWrite)
 	if err != nil {
