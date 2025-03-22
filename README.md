@@ -1,5 +1,4 @@
-This demo project involves creating various promotion types for e-commerce platforms, such as discount promotions, flash sales, add-on deals, and bundle deals. Each promotion includes products and product variants. The project also focuses on refactoring for high-performance CRUD operations.
-
+This project showcases best practices for optimizing CRUD performance by leveraging Go routines for concurrent processing alongside connection pooling. It enhances database efficiency through raw queries, reduces system load with Kafka, and improves response times using Redis for caching frequently accessed data.
 
 cURLs:
 
