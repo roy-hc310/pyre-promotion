@@ -2,8 +2,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/http"
-	"pyre-promotion/core-internal/infrastructure"
 	core_model "pyre-promotion/core-internal/model"
 	"pyre-promotion/core-internal/utils"
 	"pyre-promotion/feature-discount/v1/model"
@@ -14,14 +14,12 @@ import (
 )
 
 type DiscountController struct {
-	Middleware      *infrastructure.MiddlewareInfra
 	Validate        *validator.Validate
 	DiscountService *service.DiscountService
 }
 
-func NewDiscountConttroller(discountService *service.DiscountService, validate *validator.Validate, middleware *infrastructure.MiddlewareInfra) *DiscountController {
+func NewDiscountConttroller(discountService *service.DiscountService, validate *validator.Validate) *DiscountController {
 	return &DiscountController{
-		Middleware:      middleware,
 		Validate:        validate,
 		DiscountService: discountService,
 	}
@@ -45,7 +43,8 @@ func (d *DiscountController) CreateDiscount(g *gin.Context) {
 		return
 	}
 
-	body.ShopID = d.Middleware.ShopId
+	shopId, _ := g.Get(utils.XShopId)
+	body.ShopID = fmt.Sprintf("%v", shopId)
 
 	data, traceID, statusCode, err := d.DiscountService.CreateDiscount(g.Request.Context(), body)
 	if err != nil {
@@ -121,7 +120,8 @@ func (d *DiscountController) ListDiscounts(g *gin.Context) {
 		return
 	}
 
-	query.ShopID = d.Middleware.ShopId
+	shopId, _ := g.Get(utils.XShopId)
+	query.ShopID = fmt.Sprintf("%v", shopId)
 
 	data, traceID, statusCode, err := d.DiscountService.ListDiscounts(g.Request.Context(), query)
 	if err != nil {
@@ -142,7 +142,7 @@ func (d *DiscountController) DeleteDiscount(g *gin.Context) {
 
 	id := g.Param("id")
 
-	traceID,statusCode, err := d.DiscountService.DeleteDiscount(ctx, id)
+	traceID, statusCode, err := d.DiscountService.DeleteDiscount(ctx, id)
 	if err != nil {
 		res.Errors = append(res.Errors, err.Error())
 		g.AbortWithStatusJSON(statusCode, res)
