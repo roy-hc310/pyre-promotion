@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"net/http"
-	"pyre-promotion/core-internal/infrastructure"
 	core_model "pyre-promotion/core-internal/model"
 	"pyre-promotion/kafka-produce/model"
 	"pyre-promotion/kafka-produce/service"
@@ -13,15 +12,13 @@ import (
 )
 
 type KafkaProduceController struct {
-	Middleware          *infrastructure.MiddlewareInfra
 	Validate            *validator.Validate
 	KafkaProduceService *service.KafkaProduceService
 }
 
-func NewKafkaProducerController(KafkaProduceService *service.KafkaProduceService, validate *validator.Validate, middleware *infrastructure.MiddlewareInfra) *KafkaProduceController {
+func NewKafkaProducerController(KafkaProduceService *service.KafkaProduceService, validate *validator.Validate) *KafkaProduceController {
 
 	return &KafkaProduceController{
-		Middleware:          middleware,
 		Validate:            validate,
 		KafkaProduceService: KafkaProduceService,
 	}

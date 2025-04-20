@@ -32,7 +32,6 @@ func NewApplication(env conf.Env) *Application {
 	postgresInfra := infrastructure.NewPostgresInfra()
 	kafkaInfra := infrastructure.NewKafkaInfra()
 	redisInfra := infrastructure.NewRedisInfra()
-	middlewareInfra := infrastructure.NewMiddlewareInfra()
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	productProtoClientInfra := infrastructure.NewProductProtoClientInfra()
 	otelInfra := infrastructure.NewOtelInfra()
@@ -41,10 +40,10 @@ func NewApplication(env conf.Env) *Application {
 	application.HealthV1Controller = health_v1_controller.NewHealthController(application.HealthV1Service)
 
 	application.DiscountV1Service = discount_v1_service.NewDiscountService(postgresInfra, redisInfra, productProtoClientInfra, otelInfra)
-	application.DiscountV1Controller = discount_v1_controller.NewDiscountConttroller(application.DiscountV1Service, validate, middlewareInfra)
+	application.DiscountV1Controller = discount_v1_controller.NewDiscountConttroller(application.DiscountV1Service, validate)
 
 	application.KafkaProduceService = kafka_producer_service.NewKafkaProduceService(kafkaInfra.Client)
-	application.KafkaProducerController = kafka_producer_controller.NewKafkaProducerController(application.KafkaProduceService, validate, middlewareInfra)
+	application.KafkaProducerController = kafka_producer_controller.NewKafkaProducerController(application.KafkaProduceService, validate)
 
 	return application
 }
