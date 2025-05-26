@@ -12,13 +12,20 @@ type CoreModel struct {
 }
 
 type CoreQuery struct {
-	Page string `form:"page" json:"page"`
-	Size string `form:"size" json:"size"`
+	Page   string `form:"page" json:"page"`
+	Size   string `form:"size" json:"size"`
+	Cursor string `form:"cursor" json:"cursor"`
 
 	Sort   string `form:"sort" json:"sort"`
 	Search string `form:"search" json:"search"`
-	Cursor string `form:"cursor" json:"cursor"`
 	ShopID string `form:"shop_id" json:"shop_id"`
+}
+
+type Pagination struct {
+	Page       string    `json:"page"`
+	Size       string    `json:"size"`
+	TotalItems string    `json:"total_items"`
+	NextCursor string `json:"next_cursor"`
 }
 
 type CoreResponseObject struct {
@@ -30,5 +37,5 @@ type CoreResponseObject struct {
 
 type CoreResponseArray struct {
 	CoreResponseObject
-	TotalItems int `json:"total_items"`
+	Pagination
 }

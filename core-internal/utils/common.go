@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -34,7 +35,15 @@ func PrepareUpdateQuery(tableName string, colunmsName []string) string {
 	}
 	finalPlaceholder := strings.Join(placeholders, ", ")
 
-	queryString := fmt.Sprintf(`UPDATE %s SET %s WHERE uuid = %s AND deleted_at IS NULL FOR UPDATE`, tableName, finalPlaceholder, fmt.Sprintf("$%d", len(colunmsName)+1))
+	queryString := fmt.Sprintf(`UPDATE %s SET %s WHERE uuid = %s AND deleted_at IS NULL `, tableName, finalPlaceholder, fmt.Sprintf("$%d", len(colunmsName)+1))
+
+	return queryString
+}
+
+func PrepareSelectQueryForUpdate(tableName string, colunmsName []string) string {
+	finalPlaceholder := strings.Join(colunmsName, ", ")
+
+	queryString := fmt.Sprintf(`SELECT %s FROM %s WHERE deleted_at IS NULL AND id = $1 FOR UPDATE `, finalPlaceholder, tableName)
 
 	return queryString
 }
@@ -48,6 +57,12 @@ func PrepareSelectQuery(tableName string, colunmsName []string) string {
 	return queryString
 }
 
+func PrepareSelectCountQuery(tableName string) string {
+	queryString := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE deleted_at IS NULL `, tableName)
+
+	return queryString
+}
+
 func IsValidUUID(value string) bool {
 	if value == "" {
 		return false
@@ -55,4 +70,30 @@ func IsValidUUID(value string) bool {
 	_, err := uuid.Parse(value)
 
 	return err == nil
+}
+
+func StringToInt(value string) int {
+	if value == "" {
+		return 0
+	}
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return intValue
+}
+
+func IntToString(value int) string {
+	return strconv.Itoa(value)
+}
+
+func StringToFloat(value string) float64 {
+	if value == "" {
+		return 0
+	}
+	floatValue, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0
+	}
+	return floatValue
 }

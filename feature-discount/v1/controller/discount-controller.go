@@ -123,7 +123,7 @@ func (d *DiscountController) ListDiscounts(g *gin.Context) {
 	shopId, _ := g.Get(utils.XShopId)
 	query.ShopID = fmt.Sprintf("%v", shopId)
 
-	data, traceID, statusCode, err := d.DiscountService.ListDiscounts(g.Request.Context(), query)
+	data, pagination, traceID, statusCode, err := d.DiscountService.ListDiscounts(g.Request.Context(), query)
 	if err != nil {
 		res.Errors = append(res.Errors, err.Error())
 		g.AbortWithStatusJSON(statusCode, res)
@@ -133,6 +133,7 @@ func (d *DiscountController) ListDiscounts(g *gin.Context) {
 	res.Data = data
 	res.TraceID = traceID
 	res.Succeeded = true
+	res.Pagination = pagination
 	g.JSON(statusCode, res)
 }
 
