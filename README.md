@@ -1,12 +1,145 @@
-This project showcases best practices for optimizing CRUD performance by leveraging Go routines for concurrent processing alongside connection pooling. It enhances database efficiency through raw queries, reduces system load with Kafka, and improves response times using Redis for caching frequently accessed data.
+# PYRE PROMOTION SERVICE
 
-cURLs:
+This repository hosts a **promotion service** built with Go, featuring a microservices architecture that includes:
 
-**System Health:**
-curl --location 'hoachu.pro:8000/api/health/v1'
+- gRPC communication between micro-services
+- HTTP communication for front-end
+- Kafka for message queues
+- PostgreSQL for data storage
+- Redis for caching
+- OpenTelemetry for distributed tracing
+- Health monitoring and metrics
 
-**Insert Promotion:**
-curl --location 'hoachu.pro:8000/api/discount/v1' \
+---
+
+## 📚 Table of Contents
+
+- [Overview](#-overview)
+- [Architecture](#-architecture)
+- [Getting Started](#-getting-started)
+- [Deployment](#-deployment)
+- [Usage](#-usage)
+
+---
+
+## 🧭 Overview
+
+The Pyre Promotion Service is a robust microservice designed to handle promotional campaigns and discounts in an e-commerce system. It provides:
+
+- Promotion management and validation
+- Discount calculation and application
+- Event-driven architecture using Kafka
+- High-performance caching with Redis
+- Distributed tracing with OpenTelemetry
+- Better query performance with concurrency
+
+---
+
+## 🏗 Architecture
+
+The service is built with the following key components:
+
+- **Core Service**: Main promotion logic and business rules
+- **Kafka Integration**: Event production and consumption
+- **Database Layer**: PostgreSQL for persistent storage
+- **Cache Layer**: Redis for high-performance caching
+- **Health Monitoring**: System health checks and metrics
+- **Promotion Feature**: Specialized discount calculation logic
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Go 1.23.4 or higher
+- Docker and Docker Compose
+- PostgreSQL
+- golang-migration CLI
+- protoc for Golang (optional)
+- Redis (optional)
+- Kafka (optional)
+- Opentelemetry (optional)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/pyre-promotion.git
+cd pyre-promotion
+```
+
+2. Install dependencies:
+```bash
+go mod download
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+4. Run DB Migration:
+```bash
+make migrate_up
+```
+
+
+### Project Structure
+
+```
+.
+├── core/               # Core business logic
+├── core-internal/      # Internal core components
+├── feature-discount/   # Discount calculation feature
+├── feature-health/     # Health monitoring
+├── kafka-consume/      # Kafka consumer implementation
+├── kafka-produce/      # Kafka producer implementation
+├── protos/            # Protocol buffer definitions
+└── sqlc/              # SQL code generation
+```
+
+---
+
+## 🚢 Deployment
+
+The service can be deployed using:
+
+1. Local Host:
+```bash
+go run main.go
+```
+
+2. Docker:
+```bash
+docker-compose up --build
+```
+
+3. Kubernetes:
+```bash
+kubectl apply -f deployment.yaml
+kubectl apply -f configMap.yaml
+```
+
+---
+
+## 💼 Usage
+Curls below are example usage of HTTP APIs
+
+### ✏️ Postman API Collection
+```bash
+https://www.postman.com/dark-eclipse-55522/workspace/pyre-public/collection/20536686-46c3db49-d794-4e99-b60e-6259265e181c?action=share&creator=20536686
+```
+
+### ♥️ System Health
+```bash
+curl --location 'localhost:8000/api/health/v1'
+```
+
+### ➕ Insert Promotion
+```bash
+curl --location 'localhost:8000/api/discount/v1' \
 --header 'x-shop-id: shop123' \
 --header 'Content-Type: application/json' \
 --data '{
@@ -59,14 +192,19 @@ curl --location 'hoachu.pro:8000/api/discount/v1' \
     }
   ]
 }'
+```
 
-**Detail Promotion:**
-curl --location 'hoachu.pro:8000/api/discount/v1/2dce604e-6d30-4c80-b449-17c67c75dc58' \
+### 🔍 Detail Promotion
+```bash
+curl --location 'localhost:8000/api/discount/v1/2dce604e-6d30-4c80-b449-17c67c75dc58' \
 --header 'x-shop-id: shop123' \
 --data ''
+```
 
-**Update Promotion:**
-curl --location --request PUT 'hoachu.pro:8000/api/discount/v1/2dce604e-6d30-4c80-b449-17c67c75dc58' \
+
+### 🔧 Update Promotion
+```bash
+curl --location --request PUT 'localhost:8000/api/discount/v1/2dce604e-6d30-4c80-b449-17c67c75dc58' \
 --header 'x-shop-id: shop123' \
 --header 'Content-Type: application/json' \
 --data '
@@ -158,13 +296,21 @@ curl --location --request PUT 'hoachu.pro:8000/api/discount/v1/2dce604e-6d30-4c8
             }
         ]
     }'
+```
 
-**List Promotions:**
-curl --location 'hoachu.pro:8000/api/discount/v1?cursor=5&size=10&sort=updated_at%20ASC' \
+
+### 📜 List Promotions
+```bash
+curl --location 'localhost:8000/api/discount/v1?cursor=5&size=10&sort=updated_at%20ASC' \
 --header 'x-shop-id: shop123' \
 --data ''
+```
 
-**Delete Promotions:**
-curl --location --request DELETE 'hoachu.pro:8000/api/discount/v1/2dce604e-6d30-4c80-b449-17c67c75dc58' \
+### ❌ Delete Promotions
+```bash
+curl --location --request DELETE 'localhost:8000/api/discount/v1/2dce604e-6d30-4c80-b449-17c67c75dc58' \
 --header 'x-shop-id: shop123' \
 --data ''
+```
+
+---
